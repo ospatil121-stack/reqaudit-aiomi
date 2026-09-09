@@ -12,13 +12,24 @@ st.set_page_config(
 st.title("📋 ReqAudit AIOMI")
 st.markdown("AI-powered requirement auditing and analysis")
 
+# Check for API key
+api_key = st.secrets.get("ANTHROPIC_API_KEY", "").strip()
+
+if not api_key or api_key == "sk-ant-api03-YOUR-KEY-HERE":
+    st.error("""
+    ⚠️ **API Key Not Configured**
+    
+    Please add your Anthropic API key to the Streamlit Cloud secrets:
+    1. Go to your app settings
+    2. Click "Secrets" 
+    3. Add: `ANTHROPIC_API_KEY = "sk-ant-api03-YOUR-ACTUAL-KEY"`
+    4. Save and refresh
+    """)
+    st.stop()
+
 # Initialize Anthropic client
 @st.cache_resource
 def get_client():
-    api_key = st.secrets.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        st.error("⚠️ ANTHROPIC_API_KEY not found in .streamlit/secrets.toml")
-        st.stop()
     return Anthropic(api_key=api_key)
 
 client = get_client()
@@ -46,20 +57,23 @@ if prompt := st.chat_input("Ask me anything about your requirements..."):
     # Get response from Claude
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            response = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=1024,
-                messages=st.session_state.messages
-            )
-            
-            assistant_message = response.content[0].text
-            st.markdown(assistant_message)
-            
-            # Add assistant message to history
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": assistant_message
-            })
+            try:
+                response = client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=1024,
+                    messages=st.session_state.messages
+                )
+                
+                assistant_message = response.content[0].text
+                st.markdown(assistant_message)
+                
+                # Add assistant message to history
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": assistant_message
+                })
+            except Exception as e:
+                st.error(f"Error communicating with Claude: {str(e)}")
 
 # Sidebar
 with st.sidebar:
